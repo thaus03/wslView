@@ -72,3 +72,19 @@ def stop_distro(name: str) -> None:
 def shutdown_all() -> None:
     """Encerra todas as distros WSL em execução."""
     _run_wsl(["--shutdown"])
+
+
+def get_os_pretty_name(name: str) -> str | None:
+    """Lê o PRETTY_NAME de /etc/os-release de uma distro em execução.
+
+    Só deve ser chamada para distros já "Running": rodar em uma distro
+    parada a iniciaria como efeito colateral, o que contraria o refresh
+    manual e sem custo extra pedido pelo projeto.
+    """
+    result = _run_wsl(["-d", name, "-e", "cat", "/etc/os-release"])
+    if result.returncode != 0:
+        return None
+    for line in _decode(result.stdout).splitlines():
+        if line.startswith("PRETTY_NAME="):
+            return line.split("=", 1)[1].strip().strip('"')
+    return None

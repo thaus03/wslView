@@ -12,11 +12,19 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
-from wsl_manager import Distro, WslNotFoundError, list_distros, shutdown_all, start_distro, stop_distro
+from wsl_manager import (
+    Distro,
+    WslNotFoundError,
+    get_os_pretty_name,
+    list_distros,
+    shutdown_all,
+    start_distro,
+    stop_distro,
+)
 
 WINDOW_TITLE = "wslView"
-WINDOW_SIZE = "560x360"
-COLUMN_WIDTHS = (220, 110, 60)
+WINDOW_SIZE = "620x360"
+COLUMN_WIDTHS = (200, 100, 50, 190)
 SELECTED_COLOR = ("gray80", "gray25")
 
 ctk.set_appearance_mode("System")
@@ -41,7 +49,7 @@ class WslViewApp(ctk.CTk):
     def _build_widgets(self) -> None:
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 0))
-        for text, width in zip(("Distro", "Status", "WSL"), COLUMN_WIDTHS):
+        for text, width in zip(("Distro", "Status", "WSL", "S.O."), COLUMN_WIDTHS):
             ctk.CTkLabel(
                 header, text=text, width=width, anchor="w", font=ctk.CTkFont(weight="bold")
             ).pack(side="left", padx=4)
@@ -93,8 +101,9 @@ class WslViewApp(ctk.CTk):
         self.status_var.set(f"{len(distros)} distro(s) encontrada(s).")
 
     def _add_row(self, distro: Distro) -> None:
+        os_name = get_os_pretty_name(distro.name) if distro.state == "Running" else None
         label = f"{distro.name} *" if distro.is_default else distro.name
-        values = (label, distro.state, distro.version)
+        values = (label, distro.state, distro.version, os_name or "—")
 
         row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
         row.pack(fill="x", pady=2)
