@@ -29,26 +29,10 @@ python main.py
 
 ## Gerando o executável (.exe)
 
-O `.exe` precisa ser compilado no próprio Windows (o PyInstaller não faz
-cross-compile a partir de Linux/WSL). Rode os comandos abaixo em um
-PowerShell/CMD no Windows, dentro da pasta do projeto:
-
-```powershell
-py -3 -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt pyinstaller
-pyinstaller --onedir --windowed --name wslView --collect-data customtkinter main.py
-```
-
-O `--collect-data customtkinter` é necessário porque o CustomTkinter carrega
-temas e assets em arquivos próprios (JSON) que o PyInstaller não detecta
-sozinho — sem essa flag, o `.exe` compila mas quebra em runtime.
-
-O executável e seus arquivos de suporte são gerados em `dist\wslView\`
-(use `--onedir`, não `--onefile`: inicia mais rápido, pois não precisa
-se auto-extrair para uma pasta temporária a cada execução, e reduz o
-risco de falso-positivo em antivírus). Para distribuir, compacte a pasta
-`dist\wslView\` inteira em um `.zip`.
+Um `.exe` pronto é gerado automaticamente a cada push/PR pela CI — veja o
+artifact `wslView-windows` na aba [Actions](https://github.com/thaus03/wslView/actions).
+Para compilar localmente, o passo a passo está na
+[Wiki](https://github.com/thaus03/wslView/wiki/Gerando-o-executavel).
 
 ## Changelog
 
