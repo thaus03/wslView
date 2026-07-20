@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Checar sintaxe
+        run: python -m py_compile main.py wsl_manager.py gui.py
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Gerar executável
+        run: pyinstaller --onedir --windowed --name wslView --collect-data customtkinter main.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wslView-windows
+          path: dist/wslView/
