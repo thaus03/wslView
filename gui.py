@@ -1,58 +1,82 @@
-"""Interface gráfica (tkinter) do wslView."""
+"""Interface gráfica (CustomTkinter) do wslView.
+
+CustomTkinter não tem um widget de tabela equivalente ao ttk.Treeview,
+então a lista de distros é montada como linhas dentro de um
+CTkScrollableFrame. Diálogos (messagebox) continuam do tkinter puro,
+pois o CustomTkinter não oferece substituto tematizado para eles.
+"""
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
+
+import customtkinter as ctk
 
 from wsl_manager import Distro, WslNotFoundError, list_distros, shutdown_all, start_distro, stop_distro
 
 WINDOW_TITLE = "wslView"
-WINDOW_SIZE = "480x320"
-COLUMNS = ("name", "state", "version")
+WINDOW_SIZE = "560x360"
+COLUMN_WIDTHS = (220, 110, 60)
+SELECTED_COLOR = ("gray80", "gray25")
+
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
 
-class WslViewApp(tk.Tk):
+class WslViewApp(ctk.CTk):
     """Janela principal do gerenciador de distros WSL."""
 
     def __init__(self) -> None:
         super().__init__()
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
-        self.minsize(420, 280)
+        self.minsize(480, 320)
+
+        self._selected_name: str | None = None
+        self._row_frames: dict[str, ctk.CTkFrame] = {}
 
         self._build_widgets()
         self.refresh()
 
     def _build_widgets(self) -> None:
-        tree_frame = ttk.Frame(self)
-        tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        header = ctk.CTkFrame(self, fg_color="transparent")
+        header.pack(fill="x", padx=10, pady=(10, 0))
+        for text, width in zip(("Distro", "Status", "WSL"), COLUMN_WIDTHS):
+            ctk.CTkLabel(
+                header, text=text, width=width, anchor="w", font=ctk.CTkFont(weight="bold")
+            ).pack(side="left", padx=4)
 
-        self.tree = ttk.Treeview(tree_frame, columns=COLUMNS, show="headings", selectmode="browse")
-        self.tree.heading("name", text="Distro")
-        self.tree.heading("state", text="Status")
-        self.tree.heading("version", text="WSL")
-        self.tree.column("name", width=220)
-        self.tree.column("state", width=120, anchor=tk.CENTER)
-        self.tree.column("version", width=60, anchor=tk.CENTER)
-        self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        self.list_frame = ctk.CTkScrollableFrame(self)
+        self.list_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        scrollbar = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(fill=tk.Y, side=tk.RIGHT)
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.pack(fill="x", padx=10, pady=(0, 10))
 
-        button_frame = ttk.Frame(self)
-        button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-
-        ttk.Button(button_frame, text="Refresh", command=self.refresh).pack(side=tk.LEFT)
-        ttk.Button(button_frame, text="Start", command=self._on_start).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Stop", command=self._on_stop).pack(side=tk.LEFT)
-        ttk.Button(button_frame, text="Shutdown All", command=self._on_shutdown_all).pack(side=tk.RIGHT)
+        ctk.CTkButton(button_frame, text="Refresh", command=self.refresh, width=90).pack(side="left")
+        ctk.CTkButton(button_frame, text="Start", command=self._on_start, width=90).pack(
+            side="left", padx=5
+        )
+        ctk.CTkButton(button_frame, text="Stop", command=self._on_stop, width=90).pack(side="left")
+        ctk.CTkButton(
+            button_frame,
+            text="Shutdown All",
+            command=self._on_shutdown_all,
+            width=120,
+            fg_color="#b3261e",
+            hover_color="#8c1d17",
+        ).pack(side="right")
 
         self.status_var = tk.StringVar(value="")
-        ttk.Label(self, textvariable=self.status_var, anchor=tk.W).pack(fill=tk.X, padx=10, pady=(0, 5))
+        ctk.CTkLabel(self, textvariable=self.status_var, anchor="w").pack(
+            fill="x", padx=10, pady=(0, 5)
+        )
 
     def refresh(self) -> None:
-        self.tree.delete(*self.tree.get_children())
+        for frame in self._row_frames.values():
+            frame.destroy()
+        self._row_frames.clear()
+        self._selected_name = None
+
         try:
             distros = list_distros()
         except WslNotFoundError:
@@ -64,17 +88,36 @@ class WslViewApp(tk.Tk):
             return
 
         for distro in distros:
-            label = f"{distro.name} *" if distro.is_default else distro.name
-            self.tree.insert("", tk.END, iid=distro.name, values=(label, distro.state, distro.version))
+            self._add_row(distro)
 
         self.status_var.set(f"{len(distros)} distro(s) encontrada(s).")
 
+    def _add_row(self, distro: Distro) -> None:
+        label = f"{distro.name} *" if distro.is_default else distro.name
+        values = (label, distro.state, distro.version)
+
+        row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
+        row.pack(fill="x", pady=2)
+        row.bind("<Button-1>", lambda _e, n=distro.name: self._select(n))
+
+        for text, width in zip(values, COLUMN_WIDTHS):
+            widget = ctk.CTkLabel(row, text=text, width=width, anchor="w")
+            widget.pack(side="left", padx=4)
+            widget.bind("<Button-1>", lambda _e, n=distro.name: self._select(n))
+
+        self._row_frames[distro.name] = row
+
+    def _select(self, name: str) -> None:
+        if self._selected_name is not None and self._selected_name in self._row_frames:
+            self._row_frames[self._selected_name].configure(fg_color="transparent")
+        self._selected_name = name
+        self._row_frames[name].configure(fg_color=SELECTED_COLOR)
+
     def _selected_distro(self) -> str | None:
-        selection = self.tree.selection()
-        if not selection:
+        if self._selected_name is None:
             messagebox.showinfo(WINDOW_TITLE, "Selecione uma distro na lista.")
             return None
-        return selection[0]
+        return self._selected_name
 
     def _on_start(self) -> None:
         name = self._selected_distro()
