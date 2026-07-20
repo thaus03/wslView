@@ -34,10 +34,14 @@ PowerShell/CMD no Windows, dentro da pasta do projeto:
 py -3 -m venv .venv
 .venv\Scripts\activate
 pip install pyinstaller
-pyinstaller --onefile --windowed --name wslView main.py
+pyinstaller --onedir --windowed --name wslView main.py
 ```
 
-O executável é gerado em `dist\wslView.exe`.
+O executável e seus arquivos de suporte são gerados em `dist\wslView\`
+(use `--onedir`, não `--onefile`: inicia mais rápido, pois não precisa
+se auto-extrair para uma pasta temporária a cada execução, e reduz o
+risco de falso-positivo em antivírus). Para distribuir, compacte a pasta
+`dist\wslView\` inteira em um `.zip`.
 
 ## Changelog
 
