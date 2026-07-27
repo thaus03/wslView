@@ -8,10 +8,13 @@ pois o CustomTkinter não oferece substituto tematizado para eles.
 from __future__ import annotations
 
 import tkinter as tk
+from dataclasses import dataclass
 from tkinter import messagebox
 
 import customtkinter as ctk
 
+import theme
+from theme import COLORS, DIMENSIONS, SPACING
 from wsl_manager import (
     Distro,
     WslNotFoundError,
@@ -24,11 +27,30 @@ from wsl_manager import (
 
 WINDOW_TITLE = "wslView"
 WINDOW_SIZE = "620x360"
-COLUMN_WIDTHS = (200, 100, 50, 190)
-SELECTED_COLOR = ("gray80", "gray25")
+SCROLLBAR_RESERVE_FALLBACK = 16
+
+
+@dataclass(frozen=True)
+class ColumnSpec:
+    label: str
+    minsize: int
+    weight: int
+
+
+COLUMN_SPECS: tuple[ColumnSpec, ...] = (
+    ColumnSpec("Distro", 200, 3),
+    ColumnSpec("Status", 100, 0),
+    ColumnSpec("WSL", 50, 0),
+    ColumnSpec("S.O.", 190, 2),
+)
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
+
+
+def _configure_columns(container: ctk.CTkBaseClass) -> None:
+    for index, spec in enumerate(COLUMN_SPECS):
+        container.grid_columnconfigure(index, weight=spec.weight, minsize=spec.minsize)
 
 
 class WslViewApp(ctk.CTk):
@@ -47,37 +69,105 @@ class WslViewApp(ctk.CTk):
         self.refresh()
 
     def _build_widgets(self) -> None:
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", padx=10, pady=(10, 0))
-        for text, width in zip(("Distro", "Status", "WSL", "S.O."), COLUMN_WIDTHS):
+        self.header = ctk.CTkFrame(self, fg_color="transparent")
+        self.header.pack(fill="x", padx=SPACING["md"], pady=(SPACING["md"], 0))
+        _configure_columns(self.header)
+        for index, spec in enumerate(COLUMN_SPECS):
             ctk.CTkLabel(
-                header, text=text, width=width, anchor="w", font=ctk.CTkFont(weight="bold")
-            ).pack(side="left", padx=4)
+                self.header, text=spec.label, anchor="w", font=theme.header_font()
+            ).grid(row=0, column=index, sticky="ew", padx=SPACING["xs"])
+        self.header.grid_columnconfigure(
+            len(COLUMN_SPECS), weight=0, minsize=SCROLLBAR_RESERVE_FALLBACK
+        )
 
         self.list_frame = ctk.CTkScrollableFrame(self)
-        self.list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.list_frame.pack(fill="both", expand=True, padx=SPACING["md"], pady=SPACING["md"])
 
-        button_frame = ctk.CTkFrame(self, fg_color="transparent")
-        button_frame.pack(fill="x", padx=10, pady=(0, 10))
-
-        ctk.CTkButton(button_frame, text="Refresh", command=self.refresh, width=90).pack(side="left")
-        ctk.CTkButton(button_frame, text="Start", command=self._on_start, width=90).pack(
-            side="left", padx=5
-        )
-        ctk.CTkButton(button_frame, text="Stop", command=self._on_stop, width=90).pack(side="left")
-        ctk.CTkButton(
-            button_frame,
-            text="Shutdown All",
-            command=self._on_shutdown_all,
-            width=120,
-            fg_color="#b3261e",
-            hover_color="#8c1d17",
-        ).pack(side="right")
+        self._build_button_bar()
 
         self.status_var = tk.StringVar(value="")
         ctk.CTkLabel(self, textvariable=self.status_var, anchor="w").pack(
-            fill="x", padx=10, pady=(0, 5)
+            fill="x", padx=SPACING["md"], pady=(0, SPACING["xs"])
         )
+
+        self.after_idle(self._sync_header_spacer)
+
+    def _build_button_bar(self) -> None:
+        button_frame = ctk.CTkFrame(self, fg_color="transparent")
+        button_frame.pack(fill="x", padx=SPACING["md"], pady=(0, SPACING["md"]))
+
+        primary_group = ctk.CTkFrame(button_frame, fg_color="transparent")
+        primary_group.pack(side="left")
+
+        ctk.CTkButton(
+            primary_group,
+            text="Refresh",
+            command=self.refresh,
+            width=90,
+            height=DIMENSIONS["control_height"],
+            corner_radius=DIMENSIONS["corner_radius"],
+            fg_color="transparent",
+            border_width=1,
+            border_color=COLORS["border"],
+            text_color=COLORS["on_surface"],
+            hover_color=COLORS["surface_alt"],
+        ).pack(side="left", padx=(0, SPACING["xs"]))
+
+        ctk.CTkButton(
+            primary_group,
+            text="Start",
+            command=self._on_start,
+            width=90,
+            height=DIMENSIONS["control_height"],
+            corner_radius=DIMENSIONS["corner_radius"],
+        ).pack(side="left", padx=(0, SPACING["xs"]))
+
+        ctk.CTkButton(
+            primary_group,
+            text="Stop",
+            command=self._on_stop,
+            width=90,
+            height=DIMENSIONS["control_height"],
+            corner_radius=DIMENSIONS["corner_radius"],
+            fg_color="transparent",
+            border_width=1,
+            border_color=COLORS["border"],
+            text_color=COLORS["on_surface"],
+            hover_color=COLORS["surface_alt"],
+        ).pack(side="left")
+
+        danger_group = ctk.CTkFrame(button_frame, fg_color="transparent")
+        danger_group.pack(side="right")
+
+        ctk.CTkFrame(
+            danger_group,
+            width=DIMENSIONS["divider_width"],
+            height=DIMENSIONS["divider_height"],
+            fg_color=COLORS["border"],
+        ).pack(side="left", padx=SPACING["xl"])
+
+        ctk.CTkButton(
+            danger_group,
+            text="Shutdown All",
+            command=self._on_shutdown_all,
+            width=120,
+            height=DIMENSIONS["control_height"],
+            corner_radius=DIMENSIONS["corner_radius"],
+            fg_color=COLORS["danger"],
+            hover_color=COLORS["danger_hover"],
+        ).pack(side="left")
+
+    def _sync_header_spacer(self) -> None:
+        """Ajusta a coluna-espaçadora do cabeçalho para o tamanho real da
+        scrollbar do CTkScrollableFrame, medida após o primeiro layout."""
+        width = SCROLLBAR_RESERVE_FALLBACK
+        try:
+            measured = self.list_frame._scrollbar.winfo_width()
+            if measured > 1:
+                width = measured
+        except AttributeError:
+            pass
+        self.header.grid_columnconfigure(len(COLUMN_SPECS), minsize=width)
 
     def refresh(self) -> None:
         for frame in self._row_frames.values():
@@ -106,12 +196,13 @@ class WslViewApp(ctk.CTk):
         values = (label, distro.state, distro.version, os_name or "—")
 
         row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
-        row.pack(fill="x", pady=2)
+        row.pack(fill="x", pady=SPACING["xs"])
+        _configure_columns(row)
         row.bind("<Button-1>", lambda _e, n=distro.name: self._select(n))
 
-        for text, width in zip(values, COLUMN_WIDTHS):
-            widget = ctk.CTkLabel(row, text=text, width=width, anchor="w")
-            widget.pack(side="left", padx=4)
+        for index, text in enumerate(values):
+            widget = ctk.CTkLabel(row, text=text, anchor="w")
+            widget.grid(row=0, column=index, sticky="ew", padx=SPACING["xs"])
             widget.bind("<Button-1>", lambda _e, n=distro.name: self._select(n))
 
         self._row_frames[distro.name] = row
@@ -120,7 +211,7 @@ class WslViewApp(ctk.CTk):
         if self._selected_name is not None and self._selected_name in self._row_frames:
             self._row_frames[self._selected_name].configure(fg_color="transparent")
         self._selected_name = name
-        self._row_frames[name].configure(fg_color=SELECTED_COLOR)
+        self._row_frames[name].configure(fg_color=COLORS["selected"])
 
     def _selected_distro(self) -> str | None:
         if self._selected_name is None:
