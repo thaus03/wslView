@@ -242,6 +242,12 @@ class WslViewApp(ctk.CTk):
         self.refresh()
 
     def _on_shutdown_all(self) -> None:
+        if not messagebox.askyesno(
+            WINDOW_TITLE,
+            "Isso vai encerrar TODAS as distros WSL em execução. Continuar?",
+            icon="warning",
+        ):
+            return
         try:
             shutdown_all()
         except WslNotFoundError as exc:
