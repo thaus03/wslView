@@ -6,13 +6,16 @@ Aplicativo desktop leve em Python para gerenciar distribuições WSL no Windows.
 
 - Windows 10/11 com WSL instalado
 - Python 3.11+
-- Nenhuma dependência externa (usa apenas a biblioteca padrão / tkinter)
+- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) para a
+  interface (única dependência externa do projeto — desvio deliberado da
+  ideia original de usar só a stdlib, em troca de um visual mais moderno)
 
 ## Instalação e execução
 
 ```bash
 git clone https://github.com/thaus03/wslView.git
 cd wslView
+pip install -r requirements.txt
 python main.py
 ```
 
@@ -26,18 +29,10 @@ python main.py
 
 ## Gerando o executável (.exe)
 
-O `.exe` precisa ser compilado no próprio Windows (o PyInstaller não faz
-cross-compile a partir de Linux/WSL). Rode os comandos abaixo em um
-PowerShell/CMD no Windows, dentro da pasta do projeto:
-
-```powershell
-py -3 -m venv .venv
-.venv\Scripts\activate
-pip install pyinstaller
-pyinstaller --onefile --windowed --name wslView main.py
-```
-
-O executável é gerado em `dist\wslView.exe`.
+Um `.exe` pronto é gerado automaticamente a cada push/PR pela CI — veja o
+artifact `wslView-windows` na aba [Actions](https://github.com/thaus03/wslView/actions).
+Para compilar localmente, o passo a passo está na
+[Wiki](https://github.com/thaus03/wslView/wiki/Gerando-o-executavel).
 
 ## Changelog
 
