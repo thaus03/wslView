@@ -1,3 +1,6 @@
+![Uploading image.png…]()
+
+
 # wslView
 
 Aplicativo desktop leve em Python para gerenciar distribuições WSL no Windows.
