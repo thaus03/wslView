@@ -20,7 +20,9 @@ from theme import COLORS, DIMENSIONS, SPACING
 from wsl_manager import (
     Distro,
     WslNotFoundError,
+    format_size,
     get_os_pretty_name,
+    get_vhdx_size_bytes,
     list_distros,
     shutdown_all,
     start_distro,
@@ -28,7 +30,7 @@ from wsl_manager import (
 )
 
 WINDOW_TITLE = "wslView"
-WINDOW_SIZE = "620x360"
+WINDOW_SIZE = "760x360"
 SCROLLBAR_RESERVE_FALLBACK = 16
 ICON_PATH = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "assets" / "icon.ico"
 
@@ -45,6 +47,7 @@ COLUMN_SPECS: tuple[ColumnSpec, ...] = (
     ColumnSpec("Status", 100, 0),
     ColumnSpec("WSL", 50, 0),
     ColumnSpec("S.O.", 190, 2),
+    ColumnSpec("VHDX", 90, 0),
 )
 
 ctk.set_appearance_mode("System")
@@ -63,7 +66,7 @@ class WslViewApp(ctk.CTk):
         super().__init__()
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
-        self.minsize(480, 320)
+        self.minsize(680, 320)
         self.iconbitmap(str(ICON_PATH))
 
         self._selected_name: str | None = None
@@ -196,8 +199,10 @@ class WslViewApp(ctk.CTk):
 
     def _add_row(self, distro: Distro) -> None:
         os_name = get_os_pretty_name(distro.name) if distro.state == "Running" else None
+        vhdx_bytes = get_vhdx_size_bytes(distro.name) if distro.version == "2" else None
+        vhdx_size = format_size(vhdx_bytes) if vhdx_bytes is not None else "—"
         label = f"{distro.name} *" if distro.is_default else distro.name
-        values = (label, distro.state, distro.version, os_name or "—")
+        values = (label, distro.state, distro.version, os_name or "—", vhdx_size)
 
         row = ctk.CTkFrame(self.list_frame, fg_color="transparent")
         row.pack(fill="x", pady=SPACING["xs"])
