@@ -23,7 +23,7 @@ jobs:
         run: pip install -r requirements.txt pyinstaller
 
       - name: Gerar executável
-        run: pyinstaller --onedir --windowed --name wslView --collect-data customtkinter main.py
+        run: pyinstaller --onedir --windowed --name wslView --icon assets/icon.ico --add-data "assets;assets" --collect-data customtkinter main.py
 
       - uses: actions/upload-artifact@v4
         with:
