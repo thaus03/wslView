@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 CREATE_NO_WINDOW = 0x08000000
 WSL_EXE = "wsl.exe"
+LXSS_REGISTRY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Lxss"
 
 
 @dataclass
@@ -94,3 +96,69 @@ def get_os_pretty_name(name: str) -> str | None:
         if line.startswith("PRETTY_NAME="):
             return line.split("=", 1)[1].strip().strip('"')
     return None
+
+
+def _find_vhdx_path(name: str) -> Path | None:
+    """Localiza o arquivo .vhdx de uma distro lendo o registro do Windows.
+
+    Percorre as subchaves de HKCU\\...\\Lxss (uma por distro registrada,
+    indexada por GUID) até achar a que tem `DistributionName` igual a
+    `name`, lê o valor `BasePath` dela e busca o primeiro `*.vhdx` na
+    pasta. Retorna None em qualquer etapa que falhe: chave/valor ausente,
+    permissão negada, distro não encontrada, ou nenhum .vhdx na pasta.
+    """
+    import winreg  # import local: mantém o módulo importável fora do Windows
+
+    try:
+        lxss_key_cm = winreg.OpenKey(winreg.HKEY_CURRENT_USER, LXSS_REGISTRY_PATH)
+    except OSError:
+        return None
+
+    with lxss_key_cm as lxss_key:
+        index = 0
+        while True:
+            try:
+                subkey_name = winreg.EnumKey(lxss_key, index)
+            except OSError:
+                return None  # fim da enumeração sem achar a distro
+            index += 1
+            try:
+                with winreg.OpenKey(lxss_key, subkey_name) as subkey:
+                    distro_name, _ = winreg.QueryValueEx(subkey, "DistributionName")
+                    if distro_name != name:
+                        continue
+                    base_path, _ = winreg.QueryValueEx(subkey, "BasePath")
+            except OSError:
+                continue
+            try:
+                return next(Path(base_path).glob("*.vhdx"))
+            except (StopIteration, OSError):
+                return None
+
+
+def get_vhdx_size_bytes(name: str) -> int | None:
+    """Tamanho em bytes do arquivo .vhdx da distro informada.
+
+    Só faz sentido para distros WSL2 (Distro.version == "2"); WSL1 usa
+    uma árvore de diretórios real, sem VHDX algum — o chamador deve
+    checar a versão antes de chamar esta função.
+    """
+    vhdx_path = _find_vhdx_path(name)
+    if vhdx_path is None:
+        return None
+    try:
+        return vhdx_path.stat().st_size
+    except OSError:
+        return None
+
+
+def format_size(size_bytes: int) -> str:
+    """Formata um tamanho em bytes como string legível (B/KB/MB/GB/TB)."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    size = float(size_bytes)
+    for unit in ("KB", "MB", "GB", "TB"):
+        size /= 1024
+        if round(size, 1) < 1024 or unit == "TB":
+            return f"{size:.1f} {unit}"
+    return f"{size:.1f} TB"
