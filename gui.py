@@ -30,7 +30,7 @@ from wsl_manager import (
 )
 
 WINDOW_TITLE = "wslView"
-WINDOW_SIZE = "620x360"
+WINDOW_SIZE = "760x360"
 SCROLLBAR_RESERVE_FALLBACK = 16
 ICON_PATH = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "assets" / "icon.ico"
 
@@ -47,7 +47,7 @@ COLUMN_SPECS: tuple[ColumnSpec, ...] = (
     ColumnSpec("Status", 100, 0),
     ColumnSpec("WSL", 50, 0),
     ColumnSpec("S.O.", 190, 2),
-    ColumnSpec("VHDX", 70, 0),
+    ColumnSpec("VHDX", 90, 0),
 )
 
 ctk.set_appearance_mode("System")
@@ -66,7 +66,7 @@ class WslViewApp(ctk.CTk):
         super().__init__()
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
-        self.minsize(480, 320)
+        self.minsize(680, 320)
         self.iconbitmap(str(ICON_PATH))
 
         self._selected_name: str | None = None
