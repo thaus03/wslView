@@ -7,8 +7,10 @@ pois o CustomTkinter não oferece substituto tematizado para eles.
 """
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from dataclasses import dataclass
+from pathlib import Path
 from tkinter import messagebox
 
 import customtkinter as ctk
@@ -30,6 +32,7 @@ from wsl_manager import (
 WINDOW_TITLE = "wslView"
 WINDOW_SIZE = "620x360"
 SCROLLBAR_RESERVE_FALLBACK = 16
+ICON_PATH = Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / "assets" / "icon.ico"
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,7 @@ class WslViewApp(ctk.CTk):
         self.title(WINDOW_TITLE)
         self.geometry(WINDOW_SIZE)
         self.minsize(480, 320)
+        self.iconbitmap(str(ICON_PATH))
 
         self._selected_name: str | None = None
         self._row_frames: dict[str, ctk.CTkFrame] = {}
