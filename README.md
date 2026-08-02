@@ -1,5 +1,4 @@
-![Uploading image.png…]()
-
+![Uploading image.png…](https://raw.githubusercontent.com/thaus03/wslView/refs/heads/main/assets/icon.ico)
 
 
 # wslView
