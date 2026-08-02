@@ -1,0 +1,7 @@
+{
+  "login": "NousResearch",
+  "name": "Hermes Agent",
+  "profile": "https://github.com/NousResearch/hermes-agent",
+  "avatar_url": "https://github.com/NousResearch.png",
+  "contributions": ["ideas", "infra", "code", "doc"]
+}
