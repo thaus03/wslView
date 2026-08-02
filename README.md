@@ -1,6 +1,7 @@
 ![Uploading image.png…]()
 
 
+
 # wslView
 
 Aplicativo desktop leve em Python para gerenciar distribuições WSL no Windows.
@@ -36,6 +37,15 @@ Um `.exe` pronto é gerado automaticamente a cada push/PR pela CI — veja o
 artifact `wslView-windows` na aba [Actions](https://github.com/thaus03/wslView/actions).
 Para compilar localmente, o passo a passo está na
 [Wiki](https://github.com/thaus03/wslView/wiki/Gerando-o-executavel).
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## Changelog
 
