@@ -1,5 +1,4 @@
-![Uploading image.png…](https://raw.githubusercontent.com/thaus03/wslView/refs/heads/main/assets/icon.ico)
-
+![wslView](assets/icon.png)
 
 # wslView
 
@@ -43,6 +42,15 @@ Para compilar localmente, o passo a passo está na
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/thaus03"><img src="https://avatars.githubusercontent.com/thaus03?s=100" width="100px;" alt="Igor Carvalho"/><br /><sub><b>Igor Carvalho</b></sub></a><br /><a href="#code-thaus03" title="Code">💻</a> <a href="#doc-thaus03" title="Documentation">📖</a> <a href="#infra-thaus03" title="Infrastructure">🚇</a> <a href="#ideas-thaus03" title="Ideas, Planning, & Feedback">🤔</a> <a href="#projectManagement-thaus03" title="Project Management">📆</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/anthropics/claude-code"><img src="https://github.com/anthropics.png?s=100" width="100px;" alt="Claude Code"/><br /><sub><b>Claude Code</b></sub></a><br /><a href="#code-claude-code" title="Code">💻</a> <a href="#doc-claude-code" title="Documentation">📖</a> <a href="#infra-claude-code" title="Infrastructure">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/NousResearch/hermes-agent"><img src="https://github.com/NousResearch.png?s=100" width="100px;" alt="Hermes Agent"/><br /><sub><b>Hermes Agent</b></sub></a><br /><a href="#ideas-NousResearch" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-NousResearch" title="Infrastructure">🚇</a> <a href="#code-NousResearch" title="Code">💻</a> <a href="#doc-NousResearch" title="Documentation">📖</a></td>
+    </tr>
+  </tbody>
+</table>
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
