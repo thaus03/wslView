@@ -28,6 +28,7 @@ python main.py
 - Iniciar uma distro selecionada
 - Parar uma distro selecionada
 - Encerrar todas as distros de uma vez ("Shutdown All")
+- Exibir o tamanho do arquivo VHDX de cada distro WSL2 (lido via registro do Windows)
 - Atualização de status via botão "Refresh" (sem polling automático)
 
 ## Gerando o executável (.exe)
