@@ -8,7 +8,9 @@ pois o CustomTkinter não oferece substituto tematizado para eles.
 from __future__ import annotations
 
 import sys
+import threading
 import tkinter as tk
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import messagebox
@@ -73,6 +75,7 @@ class WslViewApp(ctk.CTk):
         self._selected_name: str | None = None
         self._row_frames: dict[str, ctk.CTkFrame] = {}
         self._menus: dict[str, tk.Menu] = {}
+        self._busy = False
 
         self._build_menubar()
         self._build_widgets()
@@ -136,7 +139,7 @@ class WslViewApp(ctk.CTk):
         primary_group = ctk.CTkFrame(button_frame, fg_color="transparent")
         primary_group.pack(side="left")
 
-        ctk.CTkButton(
+        self.btn_refresh = ctk.CTkButton(
             primary_group,
             text="Refresh",
             command=self.refresh,
@@ -148,18 +151,20 @@ class WslViewApp(ctk.CTk):
             border_color=COLORS["border"],
             text_color=COLORS["on_surface"],
             hover_color=COLORS["surface_alt"],
-        ).pack(side="left", padx=(0, SPACING["xs"]))
+        )
+        self.btn_refresh.pack(side="left", padx=(0, SPACING["xs"]))
 
-        ctk.CTkButton(
+        self.btn_start = ctk.CTkButton(
             primary_group,
             text="Start",
             command=self._on_start,
             width=90,
             height=DIMENSIONS["control_height"],
             corner_radius=DIMENSIONS["corner_radius"],
-        ).pack(side="left", padx=(0, SPACING["xs"]))
+        )
+        self.btn_start.pack(side="left", padx=(0, SPACING["xs"]))
 
-        ctk.CTkButton(
+        self.btn_stop = ctk.CTkButton(
             primary_group,
             text="Stop",
             command=self._on_stop,
@@ -171,7 +176,8 @@ class WslViewApp(ctk.CTk):
             border_color=COLORS["border"],
             text_color=COLORS["on_surface"],
             hover_color=COLORS["surface_alt"],
-        ).pack(side="left")
+        )
+        self.btn_stop.pack(side="left")
 
         danger_group = ctk.CTkFrame(button_frame, fg_color="transparent")
         danger_group.pack(side="right")
@@ -183,7 +189,7 @@ class WslViewApp(ctk.CTk):
             fg_color=COLORS["border"],
         ).pack(side="left", padx=SPACING["xl"])
 
-        ctk.CTkButton(
+        self.btn_shutdown_all = ctk.CTkButton(
             danger_group,
             text="Shutdown All",
             command=self._on_shutdown_all,
@@ -192,7 +198,8 @@ class WslViewApp(ctk.CTk):
             corner_radius=DIMENSIONS["corner_radius"],
             fg_color=COLORS["danger"],
             hover_color=COLORS["danger_hover"],
-        ).pack(side="left")
+        )
+        self.btn_shutdown_all.pack(side="left")
 
     def _sync_header_spacer(self) -> None:
         """Ajusta a coluna-espaçadora do cabeçalho para o tamanho real da
@@ -206,33 +213,92 @@ class WslViewApp(ctk.CTk):
             pass
         self.header.grid_columnconfigure(len(COLUMN_SPECS), minsize=width)
 
+    def _run_async(
+        self,
+        work: Callable[[], object],
+        on_done: Callable[[object, Exception | None], None],
+        busy_message: str = "Aguarde...",
+    ) -> None:
+        """Roda `work` numa thread separada e chama `on_done(valor, erro)` de
+        volta na thread principal (via `self.after`), a única thread em que
+        widgets Tk podem ser tocados com segurança.
+        """
+        self.status_var.set(busy_message)
+        self._set_busy(True)
+        box: dict[str, object] = {}
+
+        def _worker() -> None:
+            try:
+                box["value"] = work()
+            except Exception as exc:  # noqa: BLE001 - repassado como valor, não relançado
+                box["error"] = exc
+            self.after(0, _finish)
+
+        def _finish() -> None:
+            self._set_busy(False)
+            on_done(box.get("value"), box.get("error"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _set_busy(self, busy: bool) -> None:
+        self._busy = busy
+        state = "disabled" if busy else "normal"
+        for button in (self.btn_refresh, self.btn_start, self.btn_stop, self.btn_shutdown_all):
+            button.configure(state=state)
+
+    def _after_command(self, error: Exception | None, success_message: str | None = None) -> None:
+        """Callback compartilhado por ações que só precisam de erro/sucesso
+        genéricos (start/stop/shutdown all, e as próximas ações do backlog)."""
+        if error is not None:
+            message = str(error) if isinstance(error, WslError) else "Erro inesperado."
+            messagebox.showerror(WINDOW_TITLE, message)
+            return
+        if success_message:
+            messagebox.showinfo(WINDOW_TITLE, success_message)
+        self.refresh()
+
     def refresh(self) -> None:
+        if self._busy:
+            return
+        self._run_async(self._collect_distro_rows, self._on_refresh_done, busy_message="Atualizando...")
+
+    def _collect_distro_rows(self) -> list[tuple[Distro, str | None, int | None]]:
+        """Busca os dados de cada distro (chamadas a wsl.exe) — roda na
+        thread de fundo, nunca toca widgets."""
+        distros = list_distros()
+        rows: list[tuple[Distro, str | None, int | None]] = []
+        for distro in distros:
+            os_name = get_os_pretty_name(distro.name) if distro.state == "Running" else None
+            vhdx_bytes = get_vhdx_size_bytes(distro.name) if distro.version == "2" else None
+            rows.append((distro, os_name, vhdx_bytes))
+        return rows
+
+    def _on_refresh_done(self, rows: object, error: Exception | None) -> None:
         for frame in self._row_frames.values():
             frame.destroy()
         self._row_frames.clear()
         self._selected_name = None
 
-        try:
-            distros = list_distros()
-        except WslNotFoundError:
-            self.status_var.set("wsl.exe não encontrado. O WSL está instalado?")
-            return
-        except WslError as exc:
-            self.status_var.set(str(exc))
+        if error is not None:
+            if isinstance(error, WslNotFoundError):
+                self.status_var.set("wsl.exe não encontrado. O WSL está instalado?")
+            elif isinstance(error, WslError):
+                self.status_var.set(str(error))
+            else:
+                self.status_var.set("Erro inesperado ao atualizar a lista.")
             return
 
-        if not distros:
+        assert isinstance(rows, list)
+        if not rows:
             self.status_var.set("Nenhuma distro WSL instalada.")
             return
 
-        for distro in distros:
-            self._add_row(distro)
+        for distro, os_name, vhdx_bytes in rows:
+            self._add_row(distro, os_name, vhdx_bytes)
 
-        self.status_var.set(f"{len(distros)} distro(s) encontrada(s).")
+        self.status_var.set(f"{len(rows)} distro(s) encontrada(s).")
 
-    def _add_row(self, distro: Distro) -> None:
-        os_name = get_os_pretty_name(distro.name) if distro.state == "Running" else None
-        vhdx_bytes = get_vhdx_size_bytes(distro.name) if distro.version == "2" else None
+    def _add_row(self, distro: Distro, os_name: str | None, vhdx_bytes: int | None) -> None:
         vhdx_size = format_size(vhdx_bytes) if vhdx_bytes is not None else "—"
         label = f"{distro.name} *" if distro.is_default else distro.name
         values = (label, distro.state, distro.version, os_name or "—", vhdx_size)
@@ -262,37 +328,28 @@ class WslViewApp(ctk.CTk):
         return self._selected_name
 
     def _on_start(self) -> None:
+        if self._busy:
+            return
         name = self._selected_distro()
         if name is None:
             return
-        try:
-            start_distro(name)
-        except WslError as exc:
-            messagebox.showerror(WINDOW_TITLE, str(exc))
-            return
-        self.refresh()
+        self._run_async(lambda: start_distro(name), lambda _r, err: self._after_command(err))
 
     def _on_stop(self) -> None:
+        if self._busy:
+            return
         name = self._selected_distro()
         if name is None:
             return
-        try:
-            stop_distro(name)
-        except WslError as exc:
-            messagebox.showerror(WINDOW_TITLE, str(exc))
-            return
-        self.refresh()
+        self._run_async(lambda: stop_distro(name), lambda _r, err: self._after_command(err))
 
     def _on_shutdown_all(self) -> None:
+        if self._busy:
+            return
         if not messagebox.askyesno(
             WINDOW_TITLE,
             "Isso vai encerrar TODAS as distros WSL em execução. Continuar?",
             icon="warning",
         ):
             return
-        try:
-            shutdown_all()
-        except WslError as exc:
-            messagebox.showerror(WINDOW_TITLE, str(exc))
-            return
-        self.refresh()
+        self._run_async(shutdown_all, lambda _r, err: self._after_command(err))
