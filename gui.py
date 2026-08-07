@@ -86,27 +86,42 @@ class WslViewApp(ctk.CTk):
         substituto temático, mesma limitação já aceita pelos diálogos do
         tkinter.messagebox usados no resto do app).
 
+        As cores são aplicadas manualmente (tk.Menu não segue o tema do CTk
+        sozinho) resolvendo os tokens de theme.py pro modo de aparência
+        atual. Limitação conhecida do Tk no Windows: isso tende a colorir
+        de forma confiável os menus suspensos (o popup que abre ao clicar),
+        mas a própria barra do menu (a faixa "Distro/Ajuda" no topo da
+        janela) é desenhada pelo Windows e pode não respeitar essas cores
+        em toda versão/tema do SO.
+
         Guarda os submenus em self._menus pra próximas funcionalidades só
         precisarem de um add_command/add_separator, sem redecidir estrutura.
-        O menu "Arquivo" só é criado quando a primeira ação que não depende
-        de seleção (Importar/Instalar) existir — um cascade vazio é pior
+        O menu "File" só é criado quando a primeira ação que não depende de
+        seleção (Import/Install) existir — um cascade vazio é pior
         experiência que não ter o menu ainda.
         """
-        menubar = tk.Menu(self)
+        menu_colors = {
+            "bg": theme.resolve(COLORS["surface"]),
+            "fg": theme.resolve(COLORS["on_surface"]),
+            "activebackground": theme.resolve(COLORS["surface_alt"]),
+            "activeforeground": theme.resolve(COLORS["on_surface"]),
+        }
 
-        distro_menu = tk.Menu(menubar, tearoff=False)
-        distro_menu.add_command(label="Atualizar", command=self.refresh)
-        distro_menu.add_command(label="Iniciar", command=self._on_start)
-        distro_menu.add_command(label="Parar", command=self._on_stop)
+        menubar = tk.Menu(self, **menu_colors)
+
+        distro_menu = tk.Menu(menubar, tearoff=False, **menu_colors)
+        distro_menu.add_command(label="Refresh", command=self.refresh)
+        distro_menu.add_command(label="Start", command=self._on_start)
+        distro_menu.add_command(label="Stop", command=self._on_stop)
         distro_menu.add_separator()
-        distro_menu.add_command(label="Encerrar todas...", command=self._on_shutdown_all)
+        distro_menu.add_command(label="Shutdown All", command=self._on_shutdown_all)
         menubar.add_cascade(label="Distro", menu=distro_menu)
 
-        ajuda_menu = tk.Menu(menubar, tearoff=False)
-        menubar.add_cascade(label="Ajuda", menu=ajuda_menu)
+        help_menu = tk.Menu(menubar, tearoff=False, **menu_colors)
+        menubar.add_cascade(label="Help", menu=help_menu)
 
         self.config(menu=menubar)
-        self._menus = {"distro": distro_menu, "ajuda": ajuda_menu}
+        self._menus = {"distro": distro_menu, "help": help_menu}
 
     def _build_widgets(self) -> None:
         self.header = ctk.CTkFrame(self, fg_color="transparent")

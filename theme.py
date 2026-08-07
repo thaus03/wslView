@@ -33,7 +33,19 @@ COLORS = {
     "border": ("#979DA2", "#565B5E"),
     "on_surface": ("gray10", "#DCE4EE"),
     "surface_alt": ("gray86", "gray17"),
+    "surface": ("gray92", "gray14"),
 }
+
+
+def resolve(color: str | tuple[str, str]) -> str:
+    """Resolve um valor de COLORS pra uma cor literal, pro modo de aparência
+    atual — widgets tkinter puros (tk.Menu, por exemplo) não aceitam a
+    tupla (claro, escuro) que os widgets CTk entendem nativamente."""
+    if isinstance(color, str):
+        return color
+    light, dark = color
+    return dark if ctk.get_appearance_mode() == "Dark" else light
+
 
 _BODY_FAMILY_CANDIDATES = ("Segoe UI Variable", "Segoe UI", "Tahoma")
 
