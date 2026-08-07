@@ -72,9 +72,38 @@ class WslViewApp(ctk.CTk):
 
         self._selected_name: str | None = None
         self._row_frames: dict[str, ctk.CTkFrame] = {}
+        self._menus: dict[str, tk.Menu] = {}
 
+        self._build_menubar()
         self._build_widgets()
         self.refresh()
+
+    def _build_menubar(self) -> None:
+        """Menu nativo do Windows (tkinter.Menu — o CustomTkinter não tem
+        substituto temático, mesma limitação já aceita pelos diálogos do
+        tkinter.messagebox usados no resto do app).
+
+        Guarda os submenus em self._menus pra próximas funcionalidades só
+        precisarem de um add_command/add_separator, sem redecidir estrutura.
+        O menu "Arquivo" só é criado quando a primeira ação que não depende
+        de seleção (Importar/Instalar) existir — um cascade vazio é pior
+        experiência que não ter o menu ainda.
+        """
+        menubar = tk.Menu(self)
+
+        distro_menu = tk.Menu(menubar, tearoff=False)
+        distro_menu.add_command(label="Atualizar", command=self.refresh)
+        distro_menu.add_command(label="Iniciar", command=self._on_start)
+        distro_menu.add_command(label="Parar", command=self._on_stop)
+        distro_menu.add_separator()
+        distro_menu.add_command(label="Encerrar todas...", command=self._on_shutdown_all)
+        menubar.add_cascade(label="Distro", menu=distro_menu)
+
+        ajuda_menu = tk.Menu(menubar, tearoff=False)
+        menubar.add_cascade(label="Ajuda", menu=ajuda_menu)
+
+        self.config(menu=menubar)
+        self._menus = {"distro": distro_menu, "ajuda": ajuda_menu}
 
     def _build_widgets(self) -> None:
         self.header = ctk.CTkFrame(self, fg_color="transparent")
