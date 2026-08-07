@@ -18,20 +18,41 @@ class Distro:
     is_default: bool
 
 
-class WslNotFoundError(RuntimeError):
+class WslError(RuntimeError):
+    """Classe base para erros ao interagir com o wsl.exe."""
+
+
+class WslNotFoundError(WslError):
     """Levantado quando wsl.exe não está disponível no sistema."""
 
 
-def _run_wsl(args: list[str]) -> subprocess.CompletedProcess:
+class WslCommandError(WslError):
+    """Levantado quando wsl.exe roda mas retorna um erro (returncode != 0)."""
+
+    def __init__(self, message: str, returncode: int, stderr: str) -> None:
+        super().__init__(message)
+        self.returncode = returncode
+        self.stderr = stderr
+
+
+class WslTimeoutError(WslError):
+    """Levantado quando wsl.exe não responde dentro do tempo limite."""
+
+
+def _run_wsl(args: list[str], timeout: float | None = 15) -> subprocess.CompletedProcess:
     try:
         return subprocess.run(
             [WSL_EXE, *args],
             capture_output=True,
             creationflags=CREATE_NO_WINDOW,
-            timeout=15,
+            timeout=timeout,
         )
     except FileNotFoundError as exc:
         raise WslNotFoundError("wsl.exe não encontrado neste sistema") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WslTimeoutError(
+            f"wsl.exe não respondeu a tempo (comando: {' '.join(args)})"
+        ) from exc
 
 
 def _decode_console_table(raw: bytes) -> str:
@@ -52,6 +73,13 @@ def _decode_linux_output(raw: bytes) -> str:
 def list_distros() -> list[Distro]:
     """Lista as distros WSL instaladas com nome, estado e versão."""
     result = _run_wsl(["--list", "--verbose"])
+    if result.returncode != 0:
+        stderr_text = _decode_console_table(result.stderr).strip()
+        raise WslCommandError(
+            stderr_text or "wsl.exe retornou um erro ao listar as distros.",
+            result.returncode,
+            stderr_text,
+        )
     output = _decode_console_table(result.stdout)
 
     distros: list[Distro] = []
