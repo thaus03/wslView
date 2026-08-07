@@ -53,11 +53,15 @@ def _decode_linux_output(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def list_distros() -> list[Distro]:
-    """Lista as distros WSL instaladas com nome, estado e versão."""
-    result = _run_wsl(["--list", "--verbose"])
-    output = _decode_console_table(result.stdout)
+def _parse_distro_list(output: str) -> list[Distro]:
+    """Parseia a saída de `wsl --list --verbose` já decodificada.
 
+    Função pura (sem subprocess) para poder ser testada com `unittest`
+    fora do Windows — `subprocess.run(creationflags=...)` levanta
+    ValueError em qualquer SO que não seja Windows, então extrair o
+    parsing do corpo de list_distros() é o que torna esse trecho
+    testável em Linux/CI.
+    """
     distros: list[Distro] = []
     lines = [line for line in output.splitlines() if line.strip()]
     for line in lines[1:]:
@@ -69,6 +73,12 @@ def list_distros() -> list[Distro]:
         name, state, version = parts[0], parts[1], parts[2]
         distros.append(Distro(name=name, state=state, version=version, is_default=is_default))
     return distros
+
+
+def list_distros() -> list[Distro]:
+    """Lista as distros WSL instaladas com nome, estado e versão."""
+    result = _run_wsl(["--list", "--verbose"])
+    return _parse_distro_list(_decode_console_table(result.stdout))
 
 
 def start_distro(name: str) -> None:
