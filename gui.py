@@ -19,6 +19,7 @@ import theme
 from theme import COLORS, DIMENSIONS, SPACING
 from wsl_manager import (
     Distro,
+    WslError,
     WslNotFoundError,
     format_size,
     get_os_pretty_name,
@@ -187,6 +188,9 @@ class WslViewApp(ctk.CTk):
         except WslNotFoundError:
             self.status_var.set("wsl.exe não encontrado. O WSL está instalado?")
             return
+        except WslError as exc:
+            self.status_var.set(str(exc))
+            return
 
         if not distros:
             self.status_var.set("Nenhuma distro WSL instalada.")
@@ -234,7 +238,7 @@ class WslViewApp(ctk.CTk):
             return
         try:
             start_distro(name)
-        except WslNotFoundError as exc:
+        except WslError as exc:
             messagebox.showerror(WINDOW_TITLE, str(exc))
             return
         self.refresh()
@@ -245,7 +249,7 @@ class WslViewApp(ctk.CTk):
             return
         try:
             stop_distro(name)
-        except WslNotFoundError as exc:
+        except WslError as exc:
             messagebox.showerror(WINDOW_TITLE, str(exc))
             return
         self.refresh()
@@ -259,7 +263,7 @@ class WslViewApp(ctk.CTk):
             return
         try:
             shutdown_all()
-        except WslNotFoundError as exc:
+        except WslError as exc:
             messagebox.showerror(WINDOW_TITLE, str(exc))
             return
         self.refresh()
