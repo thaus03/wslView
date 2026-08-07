@@ -35,8 +35,12 @@ def _run_wsl(args: list[str]) -> subprocess.CompletedProcess:
 
 
 def _decode_console_table(raw: bytes) -> str:
-    """Decodifica texto tabular impresso pelo próprio wsl.exe (UTF-16LE nativo do Windows)."""
-    for encoding in ("utf-16-le", "utf-8"):
+    """Decodifica texto tabular impresso pelo próprio wsl.exe (UTF-16 nativo do Windows).
+
+    Usa "utf-16" (não "utf-16-le") de propósito: autodetecta e remove o
+    BOM quando presente, em vez de assumir sua ausência.
+    """
+    for encoding in ("utf-16", "utf-8"):
         try:
             return raw.decode(encoding)
         except UnicodeDecodeError:
